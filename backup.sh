@@ -28,9 +28,34 @@ echo "========================================"
 # ----------------------------------------
 echo "[STEP 1/3] Dumping database..."
 
+# Auto-detect server version and pick the matching pg_dump binary
+SERVER_VERSION=$(PGPASSWORD="$POSTGRES_PASSWORD" psql \
+  -h "$POSTGRES_HOST" \
+  -p "${POSTGRES_PORT:-5432}" \
+  -U "$POSTGRES_USER" \
+  -d "$POSTGRES_DB" \
+  -tAc "SHOW server_version;" 2>/dev/null | cut -d. -f1)
+
+PGDUMP_BIN="pg_dump"
+if [ -n "$SERVER_VERSION" ]; then
+  if [ -f "/usr/local/bin/pg_dump${SERVER_VERSION}" ]; then
+    PGDUMP_BIN="/usr/local/bin/pg_dump${SERVER_VERSION}"
+    echo "[STEP 1/3] Server is PostgreSQL ${SERVER_VERSION}, using matched pg_dump"
+  else
+    # Fall back to the latest installed (pg18) — backward compatible with older servers
+    PGDUMP_BIN="/usr/local/bin/pg_dump18"
+    if [ ! -f "$PGDUMP_BIN" ]; then
+      PGDUMP_BIN="pg_dump"
+    fi
+    echo "[STEP 1/3] Server is PostgreSQL ${SERVER_VERSION}, using pg_dump ($($PGDUMP_BIN --version | head -1))"
+  fi
+else
+  echo "[WARN] Could not detect server version, using default pg_dump"
+fi
+
 DUMP_START=$(date +%s)
 
-PGPASSWORD="$POSTGRES_PASSWORD" pg_dump \
+PGPASSWORD="$POSTGRES_PASSWORD" $PGDUMP_BIN \
   -h "$POSTGRES_HOST" \
   -p "${POSTGRES_PORT:-5432}" \
   -U "$POSTGRES_USER" \

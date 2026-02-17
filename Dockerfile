@@ -4,15 +4,25 @@ LABEL org.opencontainers.image.source="https://github.com/dublyo/postgresql-clou
 LABEL org.opencontainers.image.description="Automated PostgreSQL backups to S3-compatible storage (R2, MinIO, AWS S3, Backblaze B2)"
 LABEL org.opencontainers.image.licenses="MIT"
 
-# Install PostgreSQL 17 client (pg_dump) + aws-cli + utilities
-RUN apk add --no-cache \
-    postgresql17-client \
+# Install multiple PostgreSQL client versions (pg_dump) so we can match any server.
+# pg_dump is backward-compatible: a newer pg_dump can dump older servers.
+# We install the latest available (from edge) to cover the widest range.
+RUN echo "@edge https://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories \
+    && apk add --no-cache \
+    postgresql16-client \
     aws-cli \
     bash \
     gzip \
     curl \
     tzdata \
-    && rm -rf /var/cache/apk/*
+    && rm -rf /var/cache/apk/* \
+    # Save pg16 binary, then install pg17 (replaces /usr/bin/pg_dump)
+    && cp /usr/bin/pg_dump /usr/local/bin/pg_dump16 \
+    && apk add --no-cache postgresql17-client \
+    && cp /usr/bin/pg_dump /usr/local/bin/pg_dump17 \
+    # Install pg18 from edge (latest, replaces /usr/bin/pg_dump again)
+    && apk add --no-cache postgresql18-client@edge \
+    && cp /usr/bin/pg_dump /usr/local/bin/pg_dump18
 
 # Create app directory and non-root user
 RUN addgroup -S backup && adduser -S backup -G backup \

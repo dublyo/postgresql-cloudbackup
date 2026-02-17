@@ -86,10 +86,18 @@ else
   echo "[WARN] S3 connection test failed — bucket may not exist yet or credentials may be wrong"
 fi
 
-# Test PostgreSQL connection
+# Test PostgreSQL connection and detect server version
 echo "[INIT] Testing PostgreSQL connection..."
 if PGPASSWORD="$POSTGRES_PASSWORD" pg_isready -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" > /dev/null 2>&1; then
   echo "[INIT] PostgreSQL connection OK"
+  SERVER_VER=$(PGPASSWORD="$POSTGRES_PASSWORD" psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SHOW server_version;" 2>/dev/null || echo "unknown")
+  SERVER_MAJOR=$(echo "$SERVER_VER" | cut -d. -f1)
+  echo "[INIT] Server version: PostgreSQL $SERVER_VER"
+  if [ -f "/usr/local/bin/pg_dump${SERVER_MAJOR}" ]; then
+    echo "[INIT] Matched pg_dump${SERVER_MAJOR} available"
+  else
+    echo "[INIT] No exact pg_dump match for v${SERVER_MAJOR}, will use latest (backward-compatible)"
+  fi
 else
   echo "[WARN] PostgreSQL not reachable yet — backup will retry on schedule"
 fi
