@@ -90,7 +90,8 @@ fi
 echo "[INIT] Testing PostgreSQL connection..."
 if PGPASSWORD="$POSTGRES_PASSWORD" pg_isready -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" > /dev/null 2>&1; then
   echo "[INIT] PostgreSQL connection OK"
-  SERVER_VER=$(PGPASSWORD="$POSTGRES_PASSWORD" psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SHOW server_version;" 2>/dev/null || echo "unknown")
+  SERVER_VER=$(PGPASSWORD="$POSTGRES_PASSWORD" psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SHOW server_version;" 2>/dev/null || true)
+  SERVER_VER="${SERVER_VER:-unknown}"
   SERVER_MAJOR=$(echo "$SERVER_VER" | cut -d. -f1)
   echo "[INIT] Server version: PostgreSQL $SERVER_VER"
   if [ -f "/usr/local/bin/pg_dump${SERVER_MAJOR}" ]; then

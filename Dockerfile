@@ -9,6 +9,10 @@ LABEL org.opencontainers.image.licenses="MIT"
 # so we install each version alone, save the binary, then remove before the next.
 # The last version (pg18) stays installed to provide psql, pg_isready, and libpq.
 # All pg_dump binaries link against libpq.so.5 which is ABI-compatible across versions.
+# Install pg18 client first (provides psql, pg_isready, pg_dump, and libpq)
+# Then install older pg_dump binaries using static-ish approach:
+# save each pg_dump binary before removing the client package.
+# All pg_dump versions link against libpq.so.5 — we keep pg18's libpq.
 RUN echo "@edge https://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories \
     && apk add --no-cache aws-cli bash gzip curl tzdata \
     # pg16: install, save binary, remove
@@ -21,10 +25,12 @@ RUN echo "@edge https://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/rep
     && cp /usr/bin/pg_dump /usr/local/bin/pg_dump17 \
     && /usr/local/bin/pg_dump17 --version \
     && apk del --no-cache postgresql17-client \
-    # pg18 from edge: install, save binary, KEEP (provides psql + pg_isready)
+    # pg18 from edge: install LAST and KEEP (provides psql + pg_isready + matching libpq)
     && apk add --no-cache postgresql18-client@edge \
     && cp /usr/bin/pg_dump /usr/local/bin/pg_dump18 \
     && /usr/local/bin/pg_dump18 --version \
+    # Verify psql works with this libpq
+    && psql --version \
     && rm -rf /var/cache/apk/*
 
 # Create app directory and non-root user

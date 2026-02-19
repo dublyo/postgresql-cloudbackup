@@ -34,23 +34,18 @@ SERVER_VERSION=$(PGPASSWORD="$POSTGRES_PASSWORD" psql \
   -p "${POSTGRES_PORT:-5432}" \
   -U "$POSTGRES_USER" \
   -d "$POSTGRES_DB" \
-  -tAc "SHOW server_version;" 2>/dev/null | cut -d. -f1)
+  -tAc "SHOW server_version;" 2>/dev/null | cut -d. -f1 || true)
 
-PGDUMP_BIN="pg_dump"
-if [ -n "$SERVER_VERSION" ]; then
+PGDUMP_BIN="/usr/local/bin/pg_dump18"
+if [ -n "$SERVER_VERSION" ] && [ "$SERVER_VERSION" -gt 0 ] 2>/dev/null; then
   if [ -f "/usr/local/bin/pg_dump${SERVER_VERSION}" ]; then
     PGDUMP_BIN="/usr/local/bin/pg_dump${SERVER_VERSION}"
     echo "[STEP 1/3] Server is PostgreSQL ${SERVER_VERSION}, using matched pg_dump"
   else
-    # Fall back to the latest installed (pg18) — backward compatible with older servers
-    PGDUMP_BIN="/usr/local/bin/pg_dump18"
-    if [ ! -f "$PGDUMP_BIN" ]; then
-      PGDUMP_BIN="pg_dump"
-    fi
-    echo "[STEP 1/3] Server is PostgreSQL ${SERVER_VERSION}, using pg_dump ($($PGDUMP_BIN --version | head -1))"
+    echo "[STEP 1/3] Server is PostgreSQL ${SERVER_VERSION}, using pg_dump18 (backward-compatible)"
   fi
 else
-  echo "[WARN] Could not detect server version, using default pg_dump"
+  echo "[STEP 1/3] Using pg_dump18 (latest available)"
 fi
 
 DUMP_START=$(date +%s)
