@@ -4,15 +4,10 @@ LABEL org.opencontainers.image.source="https://github.com/dublyo/postgresql-clou
 LABEL org.opencontainers.image.description="Automated PostgreSQL backups to S3-compatible storage (R2, MinIO, AWS S3, Backblaze B2)"
 LABEL org.opencontainers.image.licenses="MIT"
 
-# Install multiple pg_dump versions so we can match any server (16, 17, 18).
-# Alpine won't overwrite /usr/bin/pg_dump when a second pg client is installed,
-# so we install each version alone, save the binary, then remove before the next.
-# The last version (pg18) stays installed to provide psql, pg_isready, and libpq.
-# All pg_dump binaries link against libpq.so.5 which is ABI-compatible across versions.
-# Install pg18 client first (provides psql, pg_isready, pg_dump, and libpq)
-# Then install older pg_dump binaries using static-ish approach:
-# save each pg_dump binary before removing the client package.
-# All pg_dump versions link against libpq.so.5 — we keep pg18's libpq.
+# Install pg_dump for versions 16, 17, 18 so we can match any server.
+# Each version is installed alone, its pg_dump binary is saved, then removed.
+# pg18 is installed LAST and KEPT (provides pg_isready and libpq.so.5).
+# All saved pg_dump binaries link against libpq.so.5 which is ABI-compatible.
 RUN echo "@edge https://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories \
     && apk add --no-cache aws-cli bash gzip curl tzdata \
     # pg16: install, save binary, remove
@@ -29,8 +24,6 @@ RUN echo "@edge https://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/rep
     && apk add --no-cache postgresql18-client@edge \
     && cp /usr/bin/pg_dump /usr/local/bin/pg_dump18 \
     && /usr/local/bin/pg_dump18 --version \
-    # Verify psql works with this libpq
-    && psql --version \
     && rm -rf /var/cache/apk/*
 
 # Create app directory and non-root user
